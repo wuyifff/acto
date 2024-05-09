@@ -14,6 +14,7 @@ from acto.lib.operator_config import OperatorConfig
 from acto.post_process.post_diff_test import PostDiffTest
 from acto.utils.error_handler import handle_excepthook, thread_excepthook
 from acto.utils.thread_logger import get_thread_logger
+from acto.utils.notify import Notification
 
 random.seed(0)
 
@@ -75,6 +76,12 @@ parser.add_argument(
     help="Submit a google form response to notify",
 )
 parser.add_argument(
+    "--notify-config",
+    dest="notify_config",
+    type=str,
+    help="Set a notification config to notify you by email when acto finish running"
+)
+parser.add_argument(
     "--learn-analysis",
     dest="learn_analysis_only",
     action="store_true",
@@ -132,8 +139,34 @@ else:
 
 apply_testcase_f = apply_testcase
 
+# parse the notification argument
+notify = None
+try:
+    if args.notify_config != None:
+        with open(args.notify_config, "r", encoding="utf-8") as notify_file:
+            notify_config = json.load(notify_file)
+            # Check if the config dictionary contains the necessary keys
+            required_keys = ['host', 'api', 'sender', 'receiver']
+            for key in required_keys:
+                if key not in notify_config:
+                    raise ValueError(f"JSON configuration is missing the required key: {key}")
+            notify = Notification(
+                host=notify_config['host'],
+                api=notify_config['api'],
+                sender=notify_config['sender'],
+                receiver=notify_config['receiver']
+            )
+except FileNotFoundError:
+    print(f"The file {args.notify_config} was not found. Please check if the file path is correct.")
+except json.JSONDecodeError:
+    print("The JSON file format is incorrect. Please check if the file content adheres to the JSON specification.")
+except ValueError as ve:
+    print(ve)  # Print the error message for missing required keys
+except Exception as e:
+    print(f"An unknown error occurred: {e}")
+    
 # judge is just a dry run
-if hasattr(args, 'dryrun'):
+if args.dryrun != None:
     logger.debug(f'args dryrun is set to {args.dryrun}')
     logger.debug('start generating test plan')
     acto = acto = Acto(
@@ -150,6 +183,7 @@ if hasattr(args, 'dryrun'):
         is_reproduce=False,
         input_model=DeterministicInputModel,
         apply_testcase_f=apply_testcase_f,
+        notify = notify,
         delta_from=None,
         focus_fields=config.focus_fields
     )
@@ -174,8 +208,9 @@ acto = Acto(
     is_reproduce=False,
     input_model=DeterministicInputModel,
     apply_testcase_f=apply_testcase_f,
+    notify = notify,
     delta_from=None,
-    focus_fields=config.focus_fields,
+    focus_fields=config.focus_fields
 )
 generation_time = datetime.now()
 logger.info("Acto initialization finished in %s", generation_time - start_time)

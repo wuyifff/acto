@@ -49,6 +49,7 @@ from acto.utils import (
 )
 from acto.utils.thread_logger import get_thread_logger, set_thread_logger_prefix
 from ssa.analysis import analyze
+from acto.utils.notify import Notification
 
 RECOVERY_SNAPSHOT = -2  # the immediate snapshot before the error
 
@@ -763,10 +764,11 @@ class Acto:
         is_reproduce: bool,
         input_model: type[DeterministicInputModel],
         apply_testcase_f: Callable,
+        notify: Notification,
         delta_from: Optional[str] = None,
         mount: Optional[list] = None,
         focus_fields: Optional[list] = None,
-        acto_namespace: int = 0,
+        acto_namespace: int = 0
     ) -> None:
         logger = get_thread_logger(with_prefix=False)
 
@@ -814,6 +816,7 @@ class Acto:
 
         self.runner_type = Runner
         self.checker_type = CheckerSet
+        self.notify = notify
 
         self.__learn(
             context_file=context_file,
@@ -1144,9 +1147,6 @@ class Acto:
                 t.join()
 
         end_time = time.time()
-
-        if self.dryrun == True:
-            return errors
             
         num_total_failed = 0
         for runner in runners:
@@ -1171,4 +1171,10 @@ class Acto:
             json.dump(testrun_info, info_file, cls=ActoEncoder, indent=4)
 
         logger.info("All tests finished")
+        
+        if self.notify != None:
+            msg = 'Acto run finish'
+            details = '\n'.join(f"{k}: {v}" for k, v in testrun_info.items())
+            self.notify.send(subject = msg, content = details)
+            print(f"notification sent to {self.notify.receiver}")
         return errors
