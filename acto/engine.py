@@ -284,6 +284,8 @@ class TrialRunner:
         logger = get_thread_logger(with_prefix=True)
 
         self.input_model.set_worker_id(self.worker_id)
+        if self.dryrun == True:
+            return
         apiclient = None
 
         self.input_model.set_mode(mode)
@@ -1043,7 +1045,7 @@ class Acto:
         logger = get_thread_logger(with_prefix=True)
 
         # Build an archive to be preloaded
-        if len(self.context["preload_images"]) > 0:
+        if len(self.context["preload_images"]) > 0 and self.dryrun == False:
             logger.info("Creating preload images archive")
             print_event("Preparing required images...")
             # first make sure images are present locally
@@ -1143,6 +1145,9 @@ class Acto:
 
         end_time = time.time()
 
+        if self.dryrun == True:
+            return errors
+            
         num_total_failed = 0
         for runner in runners:
             for testcases in runner.discarded_testcases.values():

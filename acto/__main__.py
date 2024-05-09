@@ -132,6 +132,33 @@ else:
 
 apply_testcase_f = apply_testcase
 
+# judge is just a dry run
+if hasattr(args, 'dryrun'):
+    logger.debug(f'args dryrun is set to {args.dryrun}')
+    logger.debug('start generating test plan')
+    acto = acto = Acto(
+        workdir_path=args.workdir_path,
+        operator_config=config,
+        cluster_runtime="KIND",
+        preload_images_=None,
+        context_file=context_cache,
+        helper_crd=args.helper_crd,
+        num_workers=args.num_workers,
+        num_cases=args.num_cases,
+        dryrun=args.dryrun,
+        analysis_only=args.learn_analysis_only,
+        is_reproduce=False,
+        input_model=DeterministicInputModel,
+        apply_testcase_f=apply_testcase_f,
+        delta_from=None,
+        focus_fields=config.focus_fields
+    )
+    if not args.learn:
+        acto.run(modes=["normal"])
+    logger.debug('test plan generating finished')
+    print('test plan is generated')
+    sys.exit(0)
+
 start_time = datetime.now()
 acto = Acto(
     workdir_path=args.workdir_path,
